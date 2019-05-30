@@ -57,8 +57,6 @@ def get_usercontext(request):
             api_base_url=client.api_base_id,
             ratelimit_method="throw",
         )
-        print("user ", user.username)
-        print("request.session", request.session["active_username"])
         return user, mastodon
     else:
         return None, None
@@ -343,7 +341,6 @@ def multifed(request, next=None, prev=None, filter_context="public"):
     min_id=prev
     accs = request.session.get("accounts_dict").values()
     acc_ids = [x['account_id'] for x in accs]
-    print(acc_ids)
     accounts = []
     mastodons = []
     for id in acc_ids:
@@ -1659,13 +1656,6 @@ def accounts(request, id=None):
     active_account, mastodon = get_usercontext(request)
     if request.method == "GET":
         accounts = [x for x in request.session.get("accounts_dict").values()]
-        #print("accounts_dict, ", request.session.get("accounts_dict"))
-        #print("accounts_dict values, ", request.session.get("accounts_dict").values())
-        print(accounts[0])
-        print("----")
-        print(accounts)
-        print("----")
-        print([x["user"]['url'] for x in accounts])
         return render(
             request,
             "accounts/list.html",
@@ -1679,8 +1669,6 @@ def accounts(request, id=None):
     if request.method == "POST":
         if request.POST.get("activate"):
             to_account = Account.objects.get(id=id).username
-            print("to_account", to_account)
-            print("id", id)
             if switch_accounts(request, to_account):
                 return redirect(home)
             else:

@@ -57,10 +57,34 @@ def get_usercontext(request):
             api_base_url=client.api_base_id,
             ratelimit_method="throw",
         )
+        print("user ", user.username)
+        print("request.session", request.session["active_username"])
         return user, mastodon
     else:
         return None, None
 
+def get_usercontext_fromid(request, id):
+    if is_logged_in(request):
+        try:
+            client = Client.objects.get(id=id)
+            user = Account.objects.get(id=id)
+        except (
+            Client.DoesNotExist,
+            Client.MultipleObjectsReturned,
+            Account.DoesNotExist,
+            Account.MultipleObjectsReturned,
+        ):
+            raise NotLoggedInException()
+        mastodon = Mastodon(
+            client_id=client.client_id,
+            client_secret=client.client_secret,
+            access_token=user.access_token,
+            api_base_url=client.api_base_id,
+            ratelimit_method="throw",
+        )
+        return user, mastodon
+    else:
+        return None, None
 
 def is_logged_in(request):
     return request.session.has_key("active_user")
@@ -312,6 +336,69 @@ def local(request, next=None, prev=None, filter_context="public"):
 def fed(request, next=None, prev=None, filter_context="public"):
     return timeline(request, "public", "Federated", max_id=next, min_id=prev)
 
+def multifed(request, next=None, prev=None, filter_context="public"):
+    timeline="public"
+    timeline_name="Federated"
+    max_id=next
+    min_id=prev
+    accs = request.session.get("accounts_dict").values()
+    acc_ids = [x['account_id'] for x in accs]
+    print(acc_ids)
+    accounts = []
+    mastodons = []
+    for id in acc_ids:
+        account, mastodon = get_usercontext_fromid(request, id=id)
+        accounts.append(account)
+        mastodons.append(mastodon)
+    account, mastodon = get_usercontext(request)
+    data = []
+    for masto in mastodons:
+        data.extend(masto.timeline(timeline, limit=40, max_id=max_id, min_id=min_id))
+    data = sorted(data, key=lambda k: k['id'], reverse=True)
+    form = PostForm(
+        initial={"visibility": request.session["active_user"].source.privacy}
+    )
+    try:
+        prev = data[0]._pagination_prev
+        if len(mastodon.timeline(min_id=prev["min_id"])) == 0:
+            prev = None
+        else:
+            prev["min_id"] = data[0].id
+    except (IndexError, AttributeError, KeyError):
+        prev = None
+    try:
+        next = data[-1]._pagination_next
+        next["max_id"] = data[-1].id
+    except (IndexError, AttributeError, KeyError):
+        next = None
+
+    notifications = _notes_count(account, mastodon)
+    filters = get_filters(mastodon, filter_context)
+
+    # This filtering has to be done *after* getting next/prev links
+    if account.preferences.filter_replies:
+        data = [x for x in data if not x.in_reply_to_id]
+    if account.preferences.filter_boosts:
+        data = [x for x in data if not x.reblog]
+
+    # Apply filters
+    data = [x for x in data if not toot_matches_filters(x, filters)]
+
+    return render(
+        request,
+        "main/%s_timeline.html" % timeline,
+        {
+            "toots": data,
+            "form": form,
+            "timeline": timeline,
+            "timeline_name": timeline_name,
+            "own_acct": request.session["active_user"],
+            "preferences": account.preferences,
+            "notifications": notifications,
+            "prev": prev,
+            "next": next,
+        },
+    )
 
 @br_login_required
 def tag(request, tag):
@@ -1572,6 +1659,13 @@ def accounts(request, id=None):
     active_account, mastodon = get_usercontext(request)
     if request.method == "GET":
         accounts = [x for x in request.session.get("accounts_dict").values()]
+        #print("accounts_dict, ", request.session.get("accounts_dict"))
+        #print("accounts_dict values, ", request.session.get("accounts_dict").values())
+        print(accounts[0])
+        print("----")
+        print(accounts)
+        print("----")
+        print([x["user"]['url'] for x in accounts])
         return render(
             request,
             "accounts/list.html",
@@ -1585,6 +1679,8 @@ def accounts(request, id=None):
     if request.method == "POST":
         if request.POST.get("activate"):
             to_account = Account.objects.get(id=id).username
+            print("to_account", to_account)
+            print("id", id)
             if switch_accounts(request, to_account):
                 return redirect(home)
             else:

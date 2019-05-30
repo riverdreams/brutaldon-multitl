@@ -35,6 +35,7 @@ urlpatterns = [
     path("fed", views.fed, name="fed"),
     path("fed/next/<next>", views.fed, name="fed_next"),
     path("fed/prev/<prev>", views.fed, name="fed_prev"),
+    path("multifed", views.multifed, name="multifed"),
     path("note", views.note, name="note"),
     path("note/next<next>", views.note, name="note_next"),
     path("note/prev/<prev>", views.note, name="note_prev"),

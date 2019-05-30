@@ -339,15 +339,19 @@ def notes_count(request):
 
 @br_login_required
 def home(request, next=None, prev=None):
-    return timeline(
-        request, "home", "Home", max_id=next, min_id=prev, filter_context="home"
-    )
+    return timeline(request, "home", "Home", max_id=next, min_id=prev, filter_context="home")
 
+@br_login_required
+def multihome(request, next=None, prev=None):
+    return timeline(request, "home", "Home", max_id=next, min_id=prev, filter_context="home", multi=True)
 
 @br_login_required
 def local(request, next=None, prev=None, filter_context="public"):
     return timeline(request, "local", "Local", max_id=next, min_id=prev)
 
+@br_login_required
+def multilocal(request, next=None, prev=None, filter_context="public"):
+    return timeline(request, "local", "Local", max_id=next, min_id=prev, multi=True)
 
 @br_login_required
 def fed(request, next=None, prev=None, filter_context="public"):

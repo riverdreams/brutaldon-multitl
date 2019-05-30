@@ -1010,6 +1010,16 @@ def safe_get_attachment(toot, index):
         adict.text_url = ""
         return adict
 
+def account_sees_toot(request, id):
+    accounts, mastodons = get_allusercontext(request)
+    for x in range(len(mastodons)):
+        try:
+            return mastodons[x].status(id), accounts[x], mastodons[x]
+        except Exception:
+            continue
+
+def user_from_account(request, account):
+    return [x["user"] for x in request.session.get("accounts_dict").values() if x["account_id"] == account.id]
 
 @br_login_required
 def reply(request, id):
@@ -1134,8 +1144,7 @@ def reply(request, id):
 @never_cache
 @br_login_required
 def fav(request, id):
-    account, mastodon = get_usercontext(request)
-    toot = mastodon.status(id)
+    toot, account, mastodon = account_sees_toot(request, id)
     if request.method == "POST":
         if not request.POST.get("cancel", None):
             if toot.favourited:
@@ -1149,7 +1158,8 @@ def fav(request, id):
                 "intercooler/fav.html",
                 {
                     "toot": toot,
-                    "own_acct": request.session["active_user"],
+                    #"own_acct": request.session["active_user"],
+                    "own_acc": user_from_account(request, account),
                     "preferences": account.preferences,
                 },
             )
@@ -1163,7 +1173,8 @@ def fav(request, id):
             "main/fav.html",
             {
                 "toot": toot,
-                "own_acct": request.session["active_user"],
+                #"own_acct": request.session["active_user"],
+                "own_acc": user_from_account(request, account),
                 "confirm_page": True,
                 "preferences": account.preferences,
             },

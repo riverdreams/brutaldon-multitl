@@ -16,7 +16,7 @@ features added:
 
 --these are found at /subsfed and /subslocal
 
---faving/boosting/etc toots on these isn't (currently) possible due to technical reasons, maybe later, but unlikely
+--faving/boosting/etc toots on these isn't (currently) possible due to technical reasons, maybe later, but unlikely. if you want to interact with these posts, make an account on the instance
 
 
 feel free to request more features like these, email me @ riverdreams@pm.me

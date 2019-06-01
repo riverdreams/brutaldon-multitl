@@ -28,6 +28,10 @@ from inscriptis import get_text
 from time import sleep
 import re
 
+from brutaldon.get import get_instance, get_timeline
+
+from datetime import datetime
+import pytz
 
 class NotLoggedInException(Exception):
     pass
@@ -217,7 +221,10 @@ def timeline(
         next["max_id"] = data[-1].id
     except (IndexError, AttributeError, KeyError):
         next = None
-
+    
+    #for x in range(len(data)):
+    #    data[x]['is_sub'] = False
+    
     notifications = _notes_count(account, mastodon)
     filters = get_filters(mastodon, filter_context)
 
@@ -229,7 +236,10 @@ def timeline(
 
     # Apply filters
     data = [x for x in data if not toot_matches_filters(x, filters)]
-
+    
+    if multi:
+        timeline = "multi"+timeline
+    
     return render(
         request,
         "main/%s_timeline.html" % timeline,
@@ -239,6 +249,7 @@ def timeline(
             "timeline": timeline,
             "timeline_name": timeline_name,
             "own_acct": request.session["active_user"],
+            "users": allusers(request),
             "preferences": account.preferences,
             "notifications": notifications,
             "prev": prev,
@@ -343,7 +354,7 @@ def home(request, next=None, prev=None):
 
 @br_login_required
 def multihome(request, next=None, prev=None):
-    return timeline(request, "home", "Home", max_id=next, min_id=prev, filter_context="home", multi=True)
+    return timeline(request, "home", "MultiHome", max_id=next, min_id=prev, filter_context="home", multi=True)
 
 @br_login_required
 def local(request, next=None, prev=None, filter_context="public"):
@@ -351,7 +362,7 @@ def local(request, next=None, prev=None, filter_context="public"):
 
 @br_login_required
 def multilocal(request, next=None, prev=None, filter_context="public"):
-    return timeline(request, "local", "Local", max_id=next, min_id=prev, multi=True)
+    return timeline(request, "local", "MultiLocal", max_id=next, min_id=prev, multi=True)
 
 @br_login_required
 def fed(request, next=None, prev=None, filter_context="public"):
@@ -359,7 +370,7 @@ def fed(request, next=None, prev=None, filter_context="public"):
 
 @br_login_required
 def multifed(request, next=None, prev=None, filter_context="public"):
-    return timeline(request, "public", "Federated", max_id=next, min_id=prev, multi=True)
+    return timeline(request, "public", "MultiFederated", max_id=next, min_id=prev, multi=True)
 
 
 @br_login_required
@@ -883,12 +894,29 @@ def toot(request, mention=None):
     else:
         return redirect(toot)
 
+def account_sees_toot(request, id): #returns toot, account, mastodon where account, mastodon are able to see toot with that id
+    accounts, mastodons = get_allusercontext(request)
+    for x in range(len(mastodons)):
+        try:
+            return mastodons[x].status(id), accounts[x], mastodons[x]
+        except Exception:
+            continue
+
+def allusers(request):
+    return [x["user"] for x in request.session.get("accounts_dict").values()]
+
+def user_from_account(request, account):
+    return [x["user"] for x in request.session.get("accounts_dict").values() if x["account_id"] == account.id][0]
+
+def real_id(mastodon, id): #gets the id local to the instance of the toot
+    return mastodon.status(id)['url'].split('/')[4] 
 
 @br_login_required
 def redraft(request, id):
     if request.method == "GET":
-        account, mastodon = get_usercontext(request)
-        toot = mastodon.status(id)
+        toot, account, mastodon = account_sees_toot(request, id)
+        id = real_id(mastodon, id)
+        toot, account, mastodon = account_sees_toot(request, id)
         toot_content = get_text(toot.content)  # convert to plain text
         # fix up white space
         toot_content = re.sub("(^\n)|(\n$)", "", re.sub("\n\n", "\n", toot_content))
@@ -916,14 +944,15 @@ def redraft(request, id):
                 "toot": toot,
                 "form": form,
                 "redraft": True,
-                "own_acct": request.session["active_user"],
+                "own_acct": user_from_account(request, account),
                 "preferences": account.preferences,
             },
         )
     elif request.method == "POST":
         form = PostForm(request.POST, request.FILES)
-        account, mastodon = get_usercontext(request)
-        toot = mastodon.status(id)
+        toot, account, mastodon = account_sees_toot(request, id)
+        id = real_id(mastodon, id)
+        toot, account, mastodon = account_sees_toot(request, id)
         if form.is_valid():
             media_objects = []
             for index in range(1, 5):
@@ -939,9 +968,7 @@ def redraft(request, id):
                         )
                     )
             if form.cleaned_data["visibility"] == "":
-                form.cleaned_data["visibility"] = request.session[
-                    "active_user"
-                ].source.privacy
+                form.cleaned_data["visibility"] = user_from_account(request, account).source.privacy
             try:
                 try:
                     mastodon.status_post(
@@ -978,7 +1005,7 @@ def redraft(request, id):
                         "toot": toot,
                         "form": form,
                         "redraft": True,
-                        "own_acct": request.session["active_user"],
+                        "own_acct": user_from_account(request, account),
                         "preferences": account.preferences,
                     },
                 )
@@ -991,7 +1018,7 @@ def redraft(request, id):
                     "toot": toot,
                     "form": form,
                     "redraft": True,
-                    "own_acct": request.session["active_user"],
+                    "own_acct": user_from_account(request, account),
                     "preferences": account.preferences,
                 },
             )
@@ -1010,32 +1037,20 @@ def safe_get_attachment(toot, index):
         adict.text_url = ""
         return adict
 
-def account_sees_toot(request, id):
-    accounts, mastodons = get_allusercontext(request)
-    for x in range(len(mastodons)):
-        try:
-            return mastodons[x].status(id), accounts[x], mastodons[x]
-        except Exception:
-            continue
-
-def user_from_account(request, account):
-    return [x["user"] for x in request.session.get("accounts_dict").values() if x["account_id"] == account.id]
-
 @br_login_required
 def reply(request, id):
     if request.method == "GET":
-        account, mastodon = get_usercontext(request)
-        toot = mastodon.status(id)
+        toot, account, mastodon = account_sees_toot(request, id)
         context = mastodon.status_context(id)
         notifications = _notes_count(account, mastodon)
-        if toot.account.acct != request.session["active_user"].acct:
+        if toot.account.acct != user_from_account(request, account).acct:
             initial_text = "@" + toot.account.acct + " "
         else:
             initial_text = ""
         for mention in [
             x
             for x in toot.mentions
-            if x.acct != request.session["active_user"].acct
+            if x.acct != user_from_account(request, account).acct
             and x.acct != toot.account.acct
         ]:
             initial_text += "@" + mention.acct + " "
@@ -1054,15 +1069,14 @@ def reply(request, id):
                 "toot": toot,
                 "form": form,
                 "reply": True,
-                "own_acct": request.session["active_user"],
+                "own_acct": user_from_account(request, account),
                 "notifications": notifications,
                 "preferences": account.preferences,
             },
         )
     elif request.method == "POST":
         form = PostForm(request.POST, request.FILES)
-        account, mastodon = get_usercontext(request)
-        toot = mastodon.status(id)
+        toot, account, mastodon = account_sees_toot(request, id)
         context = mastodon.status_context(id)
         notifications = _notes_count(account, mastodon)
         if form.is_valid():
@@ -1116,7 +1130,7 @@ def reply(request, id):
                         "toot": toot,
                         "form": form,
                         "reply": True,
-                        "own_acct": request.session["active_user"],
+                        "own_acct": user_from_account(request, account),
                         "notifications": notifications,
                         "preferences": account.preferences,
                     },
@@ -1133,7 +1147,7 @@ def reply(request, id):
                     "toot": toot,
                     "form": form,
                     "reply": True,
-                    "own_acct": request.session["active_user"],
+                    "own_acct": user_from_account(request, account),
                     "preferences": account.preferences,
                 },
             )
@@ -1184,8 +1198,7 @@ def fav(request, id):
 @never_cache
 @br_login_required
 def boost(request, id):
-    account, mastodon = get_usercontext(request)
-    toot = mastodon.status(id)
+    toot, account, mastodon = account_sees_toot(request, id)
     if request.method == "POST":
         if not request.POST.get("cancel", None):
             if toot.reblogged:
@@ -1199,7 +1212,7 @@ def boost(request, id):
                 "intercooler/boost.html",
                 {
                     "toot": toot,
-                    "own_acct": request.session["active_user"],
+                    "own_acct": user_from_account(request, account),
                     "preferences": account.preferences,
                 },
             )
@@ -1213,7 +1226,7 @@ def boost(request, id):
             "main/boost.html",
             {
                 "toot": toot,
-                "own_acct": request.session["active_user"],
+                "own_acct": user_from_account(request, account),
                 "confirm_page": True,
                 "preferences": account.preferences,
             },
@@ -1223,10 +1236,11 @@ def boost(request, id):
 @never_cache
 @br_login_required
 def delete(request, id):
-    account, mastodon = get_usercontext(request)
-    toot = mastodon.status(id)
+    toot, account, mastodon = account_sees_toot(request, id)
+    id = real_id(mastodon, id)
+    toot, account, mastodon = account_sees_toot(request, id)
     if request.method == "POST" or request.method == "DELETE":
-        if toot.account.acct != request.session["active_user"].acct:
+        if toot.account.acct != user_from_account(request, account).acct:
             return redirect("home")
         if not request.POST.get("cancel", None):
             mastodon.status_delete(id)
@@ -1239,7 +1253,7 @@ def delete(request, id):
             "main/delete.html",
             {
                 "toot": toot,
-                "own_acct": request.session["active_user"],
+                "own_acct": user_from_account(request, account),
                 "confirm_page": True,
                 "preferences": account.preferences,
             },
@@ -1632,6 +1646,9 @@ def accounts(request, id=None):
     active_account, mastodon = get_usercontext(request)
     if request.method == "GET":
         accounts = [x for x in request.session.get("accounts_dict").values()]
+        for x in range(len(accounts)):
+            accounts[x]['instance'] = accounts[x]['user']['url'].split('/')[2] #this gets the instance and adds it to that entry in accounts, used on /accounts to show the instance, in the case that multiple usernames are the same
+        print(accounts)
         return render(
             request,
             "accounts/list.html",
@@ -1652,6 +1669,9 @@ def accounts(request, id=None):
         elif request.POST.get("forget"):
             account = Account.objects.get(id=id).username
             return forget_account(request, account)
+        elif request.POST.get("test"):
+            print("test worked")
+            return redirect(home)
         else:
             accounts = [x for x in request.session.get("accounts_dict").values()]
             return render(
@@ -1664,3 +1684,109 @@ def accounts(request, id=None):
                     "preferences": active_account.preferences,
                 },
             )
+
+def subscriptions(request, sub=None):
+    if request.method == "GET":
+        print("get_instance, ", get_instance("chitter.xyz")['uri'])
+        subs = request.session.get("subscriptions_list")
+        if not subs:
+            request.session["subscriptions_list"] = []
+            subs = request.session.get("subscriptions_list")
+        print(subs)
+        return render(
+            request,
+            "subscriptions/list.html",
+            {
+                "subscriptions": subs
+            }
+        )
+    if request.method == "POST":
+        subs = request.session.get("subscriptions_list")
+        if not subs:
+            request.session["subscriptions_list"] = []
+            subs = request.session.get("subscriptions_list")
+        if request.POST.get("remove"):
+            print(sub)
+            subs.remove(sub)
+        else:
+            query = request.POST.get("q", "")
+            print(query)
+            insts = query.replace(" ","").split(",")
+            for inst in insts:
+                try:
+                    if not get_instance(inst)['uri']==inst:
+                        insts.remove(inst)
+                except Exception:
+                    insts.remove(inst)
+            subs.extend(insts)
+            print(subs)
+        request.session["subscriptions_list"] = subs
+        return redirect(subscriptions)
+
+def subsfed(
+    request,
+    timeline="subspublic",
+    timeline_name="Subscriptions (federated)",
+    local = False,
+    next=None,
+    prev=None,
+    filter_context="public"
+):
+    account, mastodon = get_usercontext(request)
+    data = []
+    subs = request.session["subscriptions_list"]
+    params = {'local': local, 'limit': 40, 'max_id': next, 'min_id': prev}
+    for sub in subs:
+        data.extend(get_timeline(sub, "public", params))
+    data = sorted(data, key=lambda k: k['id'], reverse=True)
+    print(data)
+    
+    for x in range(len(data)):
+        data[x]['created_at']=pytz.timezone('UTC').localize(datetime.strptime(data[x]['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ"))
+        data[x]['is_sub'] = True
+    
+    form = PostForm(
+        initial={"visibility": request.session["active_user"].source.privacy}
+    )
+    try:
+        prev = data[0]._pagination_prev
+        prev["min_id"] = data[0].id
+    except (IndexError, AttributeError, KeyError):
+        prev = None
+    try:
+        next = data[-1]._pagination_next
+        next["max_id"] = data[-1].id
+    except (IndexError, AttributeError, KeyError):
+        next = None
+
+    notifications = _notes_count(account, mastodon)
+    filters = get_filters(mastodon, filter_context)
+
+    # This filtering has to be done *after* getting next/prev links
+    if account.preferences.filter_replies:
+        data = [x for x in data if not x.in_reply_to_id]
+    if account.preferences.filter_boosts:
+        data = [x for x in data if not x.reblog]
+
+    # Apply filters
+    data = [x for x in data if not toot_matches_filters(x, filters)]
+
+    return render(
+        request,
+        "main/%s_timeline.html" % timeline,
+        {
+            "toots": data,
+            "form": form,
+            "timeline": timeline,
+            "timeline_name": timeline_name,
+            "own_acct": request.session["active_user"],
+            "users": allusers(request),
+            "preferences": account.preferences,
+            "notifications": notifications,
+            "prev": prev,
+            "next": next,
+        },
+    )
+        
+def subslocal(request, next=None, prev=None):
+    return subsfed(request, timeline="subslocal", timeline_name="Subscriptions (local)", local=True, next=next, prev=prev)

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+    <div class="container">
+        <h1 class="title">Subscribed Instances</h1>
+
+        <p>
+            <form method="POST" action="{% url "subscriptions" %}">
+                {% csrf_token %}
+                <input type="search" name="q" id="q" class="input">
+                <button class="button" name="test" value="1">Add subscription</button>
+            </form>
+        </p>
+        {% if not subscriptions %}
+            <p>No subscriptions.</p>
+        {% endif %}
+        {% for sub in subscriptions %}
+            {% include "subscriptions/sub_partial.html" %}
+        {% endfor %}
+    </div>
+
+{% endblock %}

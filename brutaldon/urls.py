@@ -77,5 +77,13 @@ urlpatterns = [
     path("requests/<id>", views.follow_requests, name="follow_requests"),
     path("accounts/", views.accounts, name="accounts"),
     path("accounts/<id>", views.accounts, name="accounts"),
+    path("subscriptions/", views.subscriptions, name="subscriptions"),
+    path("subscriptions/<sub>", views.subscriptions, name="subscriptions"),
+    path("subsfed", views.subsfed, name="subsfed"),
+    path("subsfed/next/<next>", views.subsfed, name="subsfed_next"),
+    path("subsfed/prev/<prev>", views.subsfed, name="subsfed_prev"),
+    path("subslocal", views.subslocal, name="subslocal"),
+    path("subslocal/next/<next>", views.local, name="subslocal_next"),
+    path("subslocal/prev/<prev>", views.local, name="subslocal_prev"),
     path("", views.home, name=""),
 ]

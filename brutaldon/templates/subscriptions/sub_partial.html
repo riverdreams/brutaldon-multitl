@@ -1,0 +1,11 @@
+<article class="media box">
+    <div class="media-content">
+        <strong>{{ sub }}</strong>
+    </div>
+    <div class="media-right">
+        <form method="POST" action="{% url "subscriptions" sub %}">
+            {% csrf_token %}
+            <button class="button" name="remove" value="1">Remove Instance</button>
+        </form>
+    </div>
+</article>

@@ -6,13 +6,14 @@
         </p>
     </figure>
     <div class="media-content">
-        <strong>{{ account.user.display_name }}</strong> ({{ account.user.username }})
+        <strong>{{ account.user.display_name }}</strong> ({{ account.user.username }}@{{ account.instance }})
     </div>
     <div class="media-right">
         <form method="POST" action="{% url "accounts" account.account_id %}">
             {% csrf_token %}
             <button class="button" name="activate" value="1">Activate</button>
             <button class="button" name="forget" value="1">Forget</button>
+            <button class="button" name="test" value="1">Test</button>
         </form>
     </div>
 </article>

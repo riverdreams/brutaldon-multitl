@@ -1,6 +1,21 @@
 # a fork of Brutaldon
 
-i'll edit the readme later
+features added:
+-multihome, multilocal, multifed: these merge each user's home, local, and fed timelines respectively into three big timelines
+--faving, boosting, replying to toots all do so on the account whose timeline the toot came from
+---ex. if there's a user @user_a@website.com, and in its home timeline it sees a toot, on multihome, if you liked that toot, the account that would like it would be @user_a@website.com
+--found at /multihome, etc
+-the ability to 'subscribe' to instances
+--subsfed and subslocal merge each instance's fed and local timelines into two big timelines
+--these are found at /subsfed and /subslocal
+--faving/boosting/etc toots on these isn't (currently) possible due to technical reasons, maybe later, but unlikely
+
+feel free to request more features like these, email me @ riverdreams@pm.me
+
+installation info can be found at install.md
+im pretty sure you only need python to install
+
+the rest of this is the original readme file
 
 Brutaldon is a [brutalist][0], [Web 1.0][0.5] web interface for [Mastodon][1] and [Pleroma][p]. It is not a Mastodon-compatible social networking server; rather, it is just a client, like the Android or iOS client for Mastodon you may already be using, but it runs in a web server, and is accessed through a web browser. It works great in text-mode browsers such as [Lynx][2], [w3m][3], or [elinks][4], and also in more heavy-weight graphical browsers, such as Firefox. It works completely without JavaScript, but if JavaScript is available and enabled, it will be used to unobtrusively enhance the user experience.
 

@@ -1648,7 +1648,6 @@ def accounts(request, id=None):
         accounts = [x for x in request.session.get("accounts_dict").values()]
         for x in range(len(accounts)):
             accounts[x]['instance'] = accounts[x]['user']['url'].split('/')[2] #this gets the instance and adds it to that entry in accounts, used on /accounts to show the instance, in the case that multiple usernames are the same
-        print(accounts)
         return render(
             request,
             "accounts/list.html",
@@ -1669,9 +1668,6 @@ def accounts(request, id=None):
         elif request.POST.get("forget"):
             account = Account.objects.get(id=id).username
             return forget_account(request, account)
-        elif request.POST.get("test"):
-            print("test worked")
-            return redirect(home)
         else:
             accounts = [x for x in request.session.get("accounts_dict").values()]
             return render(
@@ -1687,12 +1683,10 @@ def accounts(request, id=None):
 
 def subscriptions(request, sub=None):
     if request.method == "GET":
-        print("get_instance, ", get_instance("chitter.xyz")['uri'])
         subs = request.session.get("subscriptions_list")
         if not subs:
             request.session["subscriptions_list"] = []
             subs = request.session.get("subscriptions_list")
-        print(subs)
         return render(
             request,
             "subscriptions/list.html",
@@ -1706,11 +1700,9 @@ def subscriptions(request, sub=None):
             request.session["subscriptions_list"] = []
             subs = request.session.get("subscriptions_list")
         if request.POST.get("remove"):
-            print(sub)
             subs.remove(sub)
         else:
             query = request.POST.get("q", "")
-            print(query)
             insts = query.replace(" ","").split(",")
             for inst in insts:
                 try:
@@ -1719,7 +1711,6 @@ def subscriptions(request, sub=None):
                 except Exception:
                     insts.remove(inst)
             subs.extend(insts)
-            print(subs)
         request.session["subscriptions_list"] = subs
         return redirect(subscriptions)
 
@@ -1739,7 +1730,6 @@ def subsfed(
     for sub in subs:
         data.extend(get_timeline(sub, "public", params))
     data = sorted(data, key=lambda k: k['id'], reverse=True)
-    print(data)
     
     for x in range(len(data)):
         data[x]['created_at']=pytz.timezone('UTC').localize(datetime.strptime(data[x]['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ"))

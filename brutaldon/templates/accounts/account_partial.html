@@ -6,7 +6,7 @@
         </p>
     </figure>
     <div class="media-content">
-        <strong>{{ account.user.display_name }}</strong> ({{ account.user.username }}@{{ account.instance }})
+        <strong>{{ account.user.display_name }}</strong> ({{ account.user.username }})
     </div>
     <div class="media-right">
         <form method="POST" action="{% url "accounts" account.account_id %}">

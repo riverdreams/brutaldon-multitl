@@ -97,10 +97,6 @@
                                 <span class="fa fa-home"></span>
                                 <span>Home</span>
                             </a>
-                            <a href="{% url "multihome" %}" class="navbar-item">
-                                <span class="fa fa-home"></span>
-                                <span>MultiHome</span>
-                            </a>
                             <a class="navbar-item" href="{% url "note" %}">
                                 <span class="fa fa-bell"></span>
                                 {% if preferences.notifications and not preferences.theme.is_brutalist %}
@@ -130,17 +126,9 @@
                                 <span class="fa fa-community"></span>
                                 <span >Local</span>
                             </a>
-                            <a class="navbar-item" href="{% url "multilocal" %}">
-                                <span class="fa fa-community"></span>
-                                <span >MultiLocal</span>
-                            </a>
                             <a class="navbar-item" href="{% url "fed" %}">
                                 <span class="fa fa-globe"></span>
                                 <span >Federated</span>
-                            </a>
-                            <a class="navbar-item" href="{% url "multifed" %}">
-                                <span class="fa fa-globe"></span>
-                                <span >MultiFederated</span>
                             </a>
                             <a class="navbar-item" href="{% url "toot" %}"
                                ic-get-from="{% url "toot" %}"

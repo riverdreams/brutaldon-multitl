@@ -1728,12 +1728,14 @@ def subsfed(
     subs = request.session["subscriptions_list"]
     params = {'local': local, 'limit': 40, 'max_id': next, 'min_id': prev}
     for sub in subs:
-        data.extend(get_timeline(sub, "public", params))
+        toots = get_timeline(sub, "public", params)
+        for x in range(len(toots)):
+            toots[x]['is_sub'] = sub
+        data.extend(toots)
     data = sorted(data, key=lambda k: k['id'], reverse=True)
     
     for x in range(len(data)):
         data[x]['created_at']=pytz.timezone('UTC').localize(datetime.strptime(data[x]['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ"))
-        data[x]['is_sub'] = True
     
     form = PostForm(
         initial={"visibility": request.session["active_user"].source.privacy}

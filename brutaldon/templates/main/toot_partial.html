@@ -182,6 +182,10 @@
                         </a>
                         <i id="toot-spinner-{{toot.id}}" class="fa fa-spinner fa-spin" style="display:none"></i>
                     </div>
+                {% else %}
+                    <div class="level-left">
+                        <span>({{toot.is_sub}})</span>
+                    </div>
                 {% endif %}
                 <div class="level-right">
                     {% for user in users %}

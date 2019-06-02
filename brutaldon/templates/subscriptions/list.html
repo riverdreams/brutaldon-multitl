@@ -4,7 +4,12 @@
 {% block content %}
     <div class="container">
         <h1 class="title">Subscribed Instances</h1>
-
+        <span>Subscribed </span>
+        <a href="{% url "subslocal" %}"><span>local</span></a>
+        <span>, </span>
+        <a href="{% url "subsfed" %}"><span>federated</span></a>
+        <span> timelines</span>
+        
         <p>
             <form method="POST" action="{% url "subscriptions" %}">
                 {% csrf_token %}
